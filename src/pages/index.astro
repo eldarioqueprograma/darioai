@@ -1,0 +1,18 @@
+---
+export const prerender = true;
+import Chat from '../components/Chat';
+import '../styles/global.css';
+---
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Dario AI Chat</title>
+	</head>
+	<body class="bg-zinc-950 text-zinc-200 min-h-screen selection:bg-indigo-500 selection:text-white">
+		<Chat client:load />
+	</body>
+</html>
