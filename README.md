@@ -1,43 +1,29 @@
-# Astro Starter Kit: Minimal
+## DarioAI 🤖
 
-```sh
-bun create astro@latest -- --template minimal
-```
+**DarioAI** es una aplicación web de inteligencia artificial basada en una **arquitectura cliente–servidor** que consume **múltiples APIs de modelos de lenguaje (LLMs)** externos, como **Groq** y **Gemini**, utilizando un sistema de **rotación de proveedores** para la generación de respuestas.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+El proyecto no ejecuta modelos localmente: todo el procesamiento pesado se delega a servicios externos mediante API, lo que permite un **bajo consumo de recursos**, **menor latencia** y **alta escalabilidad**.
 
-## 🚀 Project Structure
+### 🧠 Arquitectura
+- **Frontend**: Interfaz web desde la cual el usuario envía prompts, hecha con Astro, React y TailwindCSS.
+- **Backend**: Actúa como intermediario (proxy) entre el frontend y las APIs de IA.
+- **APIs de IA**: Proveedores externos de LLMs (Groq, Gemini, etc.).
+- **Sistema de rotación**: Selecciona dinámicamente el proveedor para cada solicitud.
 
-Inside of your Astro project, you'll see the following folders and files:
+Este enfoque evita dependencias de un único proveedor y mejora la tolerancia a fallos.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+### ⚙️ Características técnicas
+- Rotación de múltiples APIs de IA
+- Comunicación mediante requests HTTP (JSON)
+- Respuestas en texto (sin transferencia de modelos)
+- Bajo consumo de ancho de banda
+- Gestión de claves mediante variables de entorno
+- Diseño modular para añadir nuevos proveedores de IA
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+### 📈 Escalabilidad y rendimiento
+- El consumo de ancho de banda depende únicamente del tamaño de los prompts y respuestas.
+- El principal cuello de botella son los **límites de tokens y requests de las APIs**, no el hosting.
+- Preparado para crecer en usuarios sin cambios estructurales importantes.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+### 🎯 Objetivo
+Proveer una base técnica sólida para una IA web ligera, mantenible y extensible, enfocada en el uso eficiente de APIs externas y en la facilidad de escalado futuro.
