@@ -1,0 +1,7 @@
+[build]
+command = "bun run build"
+publish = "dist"
+
+[dev]
+framework = "astro"
+command = "bun run dev"
