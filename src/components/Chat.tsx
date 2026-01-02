@@ -10,10 +10,32 @@ interface ChatMessage {
 const SYSTEM_INPUT = 'Eres Dario AI. Tu creador es Dario. Responde en español, claro y conciso. Si no tienes información sobre algo, di que no la tienes y no intentes inventar nada. Si se te habla sobre programacion busca lo que te pide en canales como midudev o MoureDev';
 
 export default function Chat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const STORAGE_KEY = 'darioai_conversations';
+  type Conversation = {
+    id: string;
+    title: string;
+    messages: ChatMessage[];
+    createdAt: number;
+    updatedAt: number;
+  };
+  const [conversations, setConversations] = useState<Conversation[]>(() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Conversation[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [currentId, setCurrentId] = useState<string>(() => conversations[0]?.id || '');
+  const current = conversations.find(c => c.id === currentId);
+  const [messages, setMessages] = useState<ChatMessage[]>(current?.messages || []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,19 +45,100 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+    }
+  }, [conversations]);
+
+  useEffect(() => {
+    const selected = conversations.find(c => c.id === currentId);
+    setMessages(selected?.messages || []);
+  }, [currentId, conversations]);
+
+  const createConversation = () => {
+    const id = Math.random().toString(36).slice(2);
+    const now = Date.now();
+    const conv: Conversation = {
+      id,
+      title: 'Nueva conversación',
+      messages: [],
+      createdAt: now,
+      updatedAt: now
+    };
+    setConversations(prev => [conv, ...prev]);
+    setCurrentId(id);
+    setMessages([]);
+  };
+
+  const selectConversation = (id: string) => {
+    setCurrentId(id);
+  };
+
+  const deleteConversation = (id: string) => {
+    const next = conversations.filter(c => c.id !== id);
+    setConversations(next);
+    if (currentId === id) {
+      setCurrentId(next[0]?.id || '');
+      setMessages(next[0]?.messages || []);
+    }
+  };
+  const startRename = (id: string, title: string) => {
+    setEditingId(id);
+    setEditingTitle(title || '');
+  };
+  const commitRename = () => {
+    if (!editingId) return;
+    const title = editingTitle.trim();
+    setConversations(prev =>
+      prev.map(c =>
+        c.id === editingId ? { ...c, title: title || 'Sin título', updatedAt: Date.now() } : c
+      )
+    );
+    setEditingId(null);
+    setEditingTitle('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    if (currentId) {
+      setConversations(prev =>
+        prev.map(c =>
+          c.id === currentId
+            ? {
+                ...c,
+                title: c.messages.length === 0 ? userMessage.content.slice(0, 40) : c.title,
+                messages: nextMessages,
+                updatedAt: Date.now()
+              }
+            : c
+        )
+      );
+    } else {
+      const id = Math.random().toString(36).slice(2);
+      const now = Date.now();
+      const conv: Conversation = {
+        id,
+        title: userMessage.content.slice(0, 40),
+        messages: nextMessages,
+        createdAt: now,
+        updatedAt: now
+      };
+      setConversations(prev => [conv, ...prev]);
+      setCurrentId(id);
+    }
     setInput('');
     setIsLoading(true);
 
     try {
       const payloadMessages: ChatMessage[] = [
         { role: 'system', content: SYSTEM_INPUT },
-        ...messages,
+        ...nextMessages.slice(0, -1),
         userMessage
       ];
 
@@ -54,7 +157,17 @@ export default function Chat() {
         } catch {
           msg = raw || `${response.status} ${response.statusText}`;
         }
-        setMessages(prev => [...prev, { role: 'system', content: msg }]);
+        const updatedMessagesSystem = [...messages, { role: 'system', content: msg }];
+        setMessages(updatedMessagesSystem);
+        if (currentId) {
+          setConversations(prev =>
+            prev.map(c =>
+              c.id === currentId
+                ? { ...c, messages: updatedMessagesSystem, updatedAt: Date.now() }
+                : c
+            )
+          );
+        }
         return;
       }
 
@@ -67,6 +180,15 @@ export default function Chat() {
       let assistantMessage = '';
 
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      if (currentId) {
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === currentId
+              ? { ...c, messages: [...c.messages, { role: 'assistant', content: '' }], updatedAt: Date.now() }
+              : c
+          )
+        );
+      }
 
       while (true) {
         const { done, value } = await reader.read();
@@ -83,21 +205,122 @@ export default function Chat() {
           }
           return newMessages;
         });
+        if (currentId) {
+          setConversations(prev =>
+            prev.map(c => {
+              if (c.id !== currentId) return c;
+              const updated = [...c.messages];
+              const last = updated[updated.length - 1];
+              if (last?.role === 'assistant') {
+                last.content = assistantMessage;
+              } else {
+                updated.push({ role: 'assistant', content: assistantMessage });
+              }
+              return { ...c, messages: updated, updatedAt: Date.now() };
+            })
+          );
+        }
       }
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error al conectar con el servidor.';
       setMessages(prev => [...prev, { role: 'system', content: errorMessage }]);
+      if (currentId) {
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === currentId
+              ? { ...c, messages: [...c.messages, { role: 'system', content: errorMessage }], updatedAt: Date.now() }
+              : c
+          )
+        );
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto p-4 md:p-6 font-sans">
+    <div className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950/50 to-zinc-950">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 h-72 w-72 bg-indigo-500/25 blur-[120px] rounded-full"></div>
+        <div className="absolute top-1/2 -right-32 h-80 w-80 bg-purple-600/25 blur-[140px] rounded-full"></div>
+      </div>
+      <div className="relative flex h-screen max-w-6xl mx-auto p-4 md:p-6 font-sans gap-4">
+      <aside className="w-64 shrink-0 hidden md:flex md:flex-col rounded-2xl bg-zinc-900/50 border border-zinc-800/50 p-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold text-zinc-200">Conversaciones</div>
+          <button
+            onClick={createConversation}
+            className="text-xs px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500"
+          >
+            Nueva
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {conversations.length === 0 && (
+            <div className="text-xs text-zinc-500">No hay conversaciones</div>
+          )}
+          {conversations.map((c) => (
+            <div
+              key={c.id}
+              className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer ${
+                c.id === currentId ? 'bg-zinc-800 border border-zinc-700' : 'hover:bg-zinc-800/50'
+              }`}
+              onClick={() => selectConversation(c.id)}
+            >
+              <div className="flex-1">
+                {editingId === c.id ? (
+                  <input
+                    className="w-full text-sm text-zinc-200 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitRename();
+                      } else if (e.key === 'Escape') {
+                        setEditingId(null);
+                        setEditingTitle('');
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <div className="text-sm text-zinc-200 truncate">{c.title || 'Sin título'}</div>
+                )}
+                <div className="text-[10px] text-zinc-500">
+                  {new Date(c.updatedAt).toLocaleString()}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startRename(c.id, c.title);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-indigo-400"
+                title="Renombrar"
+              >
+                ✎
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteConversation(c.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-400"
+                title="Eliminar"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <div className="flex flex-col flex-1">
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/kiro.svg" alt="Dario AI" className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20" />
+          
 
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
             Dario AI
@@ -215,6 +438,8 @@ export default function Chat() {
           Potenciado por Dario AI
         </div>
       </form>
+      </div>
+    </div>
     </div>
   );
 }
