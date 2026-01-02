@@ -104,7 +104,7 @@ export default function Chat() {
           </h1>
         </div>
         <div className="text-xs font-mono text-zinc-500 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800">
-          v1.1.0 Beta Preview
+          v2.0
         </div>
       </header>
 
