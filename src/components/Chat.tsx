@@ -36,6 +36,12 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  type LogItem = { id: string; level: 'Leve' | 'Critico'; message: string; time: number };
+  const [errorLogs, setErrorLogs] = useState<LogItem[]>([]);
+  const addLog = (level: 'Leve' | 'Critico', message: string) => {
+    const item: LogItem = { id: Math.random().toString(36).slice(2), level, message, time: Date.now() };
+    setErrorLogs(prev => [item, ...prev].slice(0, 50));
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,6 +61,21 @@ export default function Chat() {
     const selected = conversations.find(c => c.id === currentId);
     setMessages(selected?.messages || []);
   }, [currentId, conversations]);
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      addLog('Critico', e.message || 'Error desconocido');
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const msg = (e as any)?.reason?.message || String((e as any)?.reason || 'Error desconocido');
+      addLog('Critico', msg);
+    };
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection as any);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection as any);
+    };
+  }, []);
 
   const createConversation = () => {
     const id = Math.random().toString(36).slice(2);
@@ -157,7 +178,8 @@ export default function Chat() {
         } catch {
           msg = raw || `${response.status} ${response.statusText}`;
         }
-        const updatedMessagesSystem = [...messages, { role: 'system', content: msg }];
+        addLog('Leve', msg);
+        const updatedMessagesSystem: ChatMessage[] = [...messages, { role: 'system', content: msg }];
         setMessages(updatedMessagesSystem);
         if (currentId) {
           setConversations(prev =>
@@ -224,6 +246,7 @@ export default function Chat() {
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error al conectar con el servidor.';
+      addLog('Critico', errorMessage);
       setMessages(prev => [...prev, { role: 'system', content: errorMessage }]);
       if (currentId) {
         setConversations(prev =>
@@ -245,7 +268,7 @@ export default function Chat() {
         <div className="absolute -top-32 -left-32 h-72 w-72 bg-indigo-500/25 blur-[120px] rounded-full"></div>
         <div className="absolute top-1/2 -right-32 h-80 w-80 bg-purple-600/25 blur-[140px] rounded-full"></div>
       </div>
-      <div className="relative flex h-screen max-w-6xl mx-auto p-4 md:p-6 font-sans gap-4">
+      <div className="relative flex h-screen max-w-7xl mx-auto p-4 md:p-6 font-sans gap-4">
       <aside className="w-64 shrink-0 hidden md:flex md:flex-col rounded-2xl bg-zinc-900/50 border border-zinc-800/50 p-3">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm font-semibold text-zinc-200">Conversaciones</div>
@@ -371,16 +394,68 @@ export default function Chat() {
                       a: ({ node, ...props }) => (
                         <a {...props} className="text-indigo-400 hover:text-indigo-300 underline" />
                       ),
-                      pre: ({ node, ...props }) => (
-                        <pre {...props} className="bg-zinc-900 rounded-lg p-3 overflow-x-auto border border-zinc-800" />
-                      ),
+                      pre: ({ node, ...props }) => {
+                        const preRef = useRef<HTMLPreElement>(null);
+                        const onCopy = () => {
+                          const text = preRef.current?.textContent || '';
+                          if (text) {
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                              navigator.clipboard.writeText(text).catch(() => {});
+                            } else {
+                              const textarea = document.createElement('textarea');
+                              textarea.value = text;
+                              document.body.appendChild(textarea);
+                              textarea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textarea);
+                            }
+                          }
+                        };
+                        return (
+                          <div className="relative group">
+                            <button
+                              onClick={onCopy}
+                              className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 hover:bg-zinc-700 opacity-0 group-hover:opacity-100"
+                            >
+                              Copiar
+                            </button>
+                            <pre ref={preRef} {...props} className="bg-zinc-900 rounded-lg p-3 overflow-x-auto border border-zinc-800" />
+                          </div>
+                        );
+                      },
                       code: ({ node, className, children, ...props }) => {
                         const isInline = !(className && /language-/.test(className));
-                        return isInline ? (
-                          <code {...props} className="bg-zinc-900 rounded px-1 py-0.5 border border-zinc-800">
-                            {children}
-                          </code>
-                        ) : (
+                        if (isInline) {
+                          const spanRef = useRef<HTMLSpanElement>(null);
+                          const onCopyInline = () => {
+                            const text = spanRef.current?.textContent || '';
+                            if (!text) return;
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                              navigator.clipboard.writeText(text).catch(() => {});
+                            } else {
+                              const textarea = document.createElement('textarea');
+                              textarea.value = text;
+                              document.body.appendChild(textarea);
+                              textarea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textarea);
+                            }
+                          };
+                          return (
+                            <span className="relative inline-flex items-center group">
+                              <code {...props} ref={spanRef} className="bg-zinc-900 rounded px-1 py-0.5 border border-zinc-800">
+                                {children}
+                              </code>
+                              <button
+                                onClick={onCopyInline}
+                                className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 hover:bg-zinc-700 opacity-0 group-hover:opacity-100"
+                              >
+                                Copiar
+                              </button>
+                            </span>
+                          );
+                        }
+                        return (
                           <code {...props} className={className}>
                             {children}
                           </code>
@@ -439,6 +514,21 @@ export default function Chat() {
         </div>
       </form>
       </div>
+      {errorLogs.length > 0 && (
+        <aside className="w-64 shrink-0 hidden md:flex md:flex-col rounded-2xl bg-zinc-900/50 border border-zinc-800/50 p-3">
+          <div className="text-sm font-semibold text-zinc-200 mb-3">Logs de errores</div>
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {errorLogs.map(log => (
+              <div key={log.id} className={`p-2 rounded-lg border ${log.level === 'Critico' ? 'border-red-700 bg-red-900/20 text-red-200' : 'border-amber-700 bg-amber-900/20 text-amber-100'}`}>
+                <div className="text-[10px] text-zinc-400">{new Date(log.time).toLocaleString()}</div>
+                <div className="text-xs">
+                  ERROR ({log.level}) ({log.message}), avisar a Dario de este error lo antes posible
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
     </div>
     </div>
   );
