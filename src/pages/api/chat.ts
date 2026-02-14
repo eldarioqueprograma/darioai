@@ -66,6 +66,8 @@ async function getStreamWithFallback(messages: ChatMessage[]) {
     services[(index + i) % services.length]
   );
 
+  const errors: string[] = [];
+
   for (const service of servicesToTry) {
     try {
       console.log(`Intentando con servicio: ${service.name}`);
@@ -80,10 +82,17 @@ async function getStreamWithFallback(messages: ChatMessage[]) {
     } catch (e) {
       console.error(`Fallo servicio ${service.name}:`, e);
       attempts++;
+      try {
+        const err = e as any;
+        const message = err?.message || String(err);
+        errors.push(`${service.name}: ${message}`);
+      } catch {
+        errors.push(`${service.name}: error desconocido`);
+      }
     }
   }
   
-  throw new Error(`Todos los servicios de IA fallaron después de ${attempts} intentos.`);
+  throw new Error(`Todos los servicios de IA fallaron (${attempts} intentos). Detalles: ${errors.join(' | ')}`);
 }
 
 export const POST: APIRoute = async ({ request }) => {

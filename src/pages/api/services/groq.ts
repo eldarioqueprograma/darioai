@@ -13,9 +13,14 @@ export const groqService: AIService = {
     const groq = getClient();
     if (!groq) throw new Error('GROQ_API_KEY is not set');
 
+    const model =
+      (import.meta as any).env?.GROQ_MODEL ||
+      process.env.GROQ_MODEL ||
+      "llama-3.1-8b-instant";
+
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.1-70b-versatile",
+      model,
       temperature: 1,
       max_completion_tokens: 1024,
       top_p: 1,

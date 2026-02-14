@@ -1,67 +1,67 @@
 {
-  "hash": "143381a7",
-  "configHash": "a7a32b2f",
-  "lockfileHash": "3391365b",
-  "browserHash": "05483407",
+  "hash": "371d716e",
+  "configHash": "85249986",
+  "lockfileHash": "0df8be2d",
+  "browserHash": "0b4af43a",
   "optimized": {
     "@astrojs/react/client.js": {
       "src": "../../node_modules/@astrojs/react/dist/client.js",
       "file": "@astrojs_react_client__js.js",
-      "fileHash": "5e90efdb",
+      "fileHash": "403a4cfb",
       "needsInterop": false
     },
     "react": {
       "src": "../../node_modules/react/index.js",
       "file": "react.js",
-      "fileHash": "237a9586",
+      "fileHash": "3b62ff67",
       "needsInterop": true
     },
     "react-dom": {
       "src": "../../node_modules/react-dom/index.js",
       "file": "react-dom.js",
-      "fileHash": "1d99dfd6",
+      "fileHash": "e8f40652",
       "needsInterop": true
     },
     "react/jsx-dev-runtime": {
       "src": "../../node_modules/react/jsx-dev-runtime.js",
       "file": "react_jsx-dev-runtime.js",
-      "fileHash": "5c41fa48",
+      "fileHash": "5dbbeb6d",
       "needsInterop": true
     },
     "react/jsx-runtime": {
       "src": "../../node_modules/react/jsx-runtime.js",
       "file": "react_jsx-runtime.js",
-      "fileHash": "b7dfeb7a",
+      "fileHash": "0cb106e4",
       "needsInterop": true
     },
     "astro > cssesc": {
       "src": "../../node_modules/cssesc/cssesc.js",
       "file": "astro___cssesc.js",
-      "fileHash": "fb99326b",
+      "fileHash": "0c6099ef",
       "needsInterop": true
     },
     "astro > aria-query": {
       "src": "../../node_modules/aria-query/lib/index.js",
       "file": "astro___aria-query.js",
-      "fileHash": "3d61c70d",
+      "fileHash": "19db71a5",
       "needsInterop": true
     },
     "astro > axobject-query": {
       "src": "../../node_modules/axobject-query/lib/index.js",
       "file": "astro___axobject-query.js",
-      "fileHash": "49d2b693",
+      "fileHash": "b76c6ad7",
       "needsInterop": true
     },
     "react-markdown": {
       "src": "../../node_modules/react-markdown/index.js",
       "file": "react-markdown.js",
-      "fileHash": "d3f83fc0",
+      "fileHash": "fbad5a73",
       "needsInterop": false
     },
     "remark-gfm": {
       "src": "../../node_modules/remark-gfm/index.js",
       "file": "remark-gfm.js",
-      "fileHash": "43113ee9",
+      "fileHash": "d947c6fb",
       "needsInterop": false
     }
   },
